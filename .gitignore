@@ -19,3 +19,8 @@ settings.json
 media/test.*
 media/env_maps/
 media/test/
+
+#for joshua repo
+deps/
+docs/
+media/
