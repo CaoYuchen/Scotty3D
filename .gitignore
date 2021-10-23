@@ -20,6 +20,6 @@ media/test.*
 media/env_maps/
 media/test/
 
-# *deps*/
-# *docs*/
-# *media*/
+deps/
+docs/
+media/

@@ -1,4 +1,0 @@
-gem 'jekyll-sitemap'
-gem 'jekyll-remote-theme'
-gem 'just-the-docs'
-source "https://rubygems.org"
