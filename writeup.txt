@@ -1,0 +1,13 @@
+CMU CG 15662 Assignment 2.0
+
+Checking point:
+I implemented erase_vertex(), erase_edge(), flip_edge(), split_edge(), collapse_edge(), bevel_face(), bevel_face_positions() functions.
+
+erase_vertex(): key point is to go through every edges, halfedges and faces that connect the deleted vertex, map all those faces
+to a single face, and to track every edge in a loop connect this vertex, only keep those edge not directly connects vertex and delete
+those directly connected edges and halfedges, finally adjust the halfedge's next().
+
+erase_edge(): find two vertices that connect this edge, change their halfedges, and also change the haledges whose next() is deleted halfedge
+to it's twin's next().
+
+split_edge(): only apply to edge that belongs to triangular, not working in more than 3 edges.
