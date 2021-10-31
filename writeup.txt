@@ -7,7 +7,34 @@ erase_vertex(): key point is to go through every edges, halfedges and faces that
 to a single face, and to track every edge in a loop connect this vertex, only keep those edge not directly connects vertex and delete
 those directly connected edges and halfedges, finally adjust the halfedge's next().
 
-erase_edge(): find two vertices that connect this edge, change their halfedges, and also change the haledges whose next() is deleted halfedge
+erase_edge(): find two vertices that connect this edge, change their halfedges, and also change the halfedges whose next() is deleted halfedge
 to it's twin's next().
 
-split_edge(): only apply to edge that belongs to triangular, not working in more than 3 edges.
+split_edge(): only apply to edge that belongs to triangular, not working in more than 3 edges. First find the center point of the edge,
+explore the v->halfedge()->next()->next()->vertex() and v->halfedge()->twin()->next()->next()->vertex(), and connect the center point with
+two found vertices separately. 
+
+flip_edge(): use next to explore target edge's connected edges, find two adjacent halfedges(one from the halfedge() side, one from 
+the halfedge->twin() side), which contains the vertex next to the targe edge's two endpoints.
+Connect two found vertices and delete the original two.
+
+
+Final:
+I implemented triangulation(), linear_subdivision(), catmull-clark_subdivision(), loop_subdivision().
+
+triangulation(): fix one vertex, and take two adjacent edges to generate a triangle, and use one of new generated edge with the second_Halfedge->next()
+to make the next triangle, iterate until meeting the end.
+
+linear_subdivision(): this one is quite straightforward, and the most of functions are already given by the halfedge.h, loop around 
+and set the center it each new_pos.
+
+Catmull-clark_subdivision(): similarly to linear subdivision, except that edge and vertex's new_pos has more weighted calculation, the center()
+function can simplify the code a lot here.
+
+loop_subdivision(): one issue I stuck quite a while is to deal with optional type, I wanted to exclude the case where split_edge doesn't
+return valid split and instead return optnull, but it seems the usage of optional is a bit obscure, but it seems that if the system
+detects optnull, it will finish the manipulation, so that even though I called split_edge inside the loop_subdivision function, it still 
+can break the rest of loop_subdivision code. The main part is in the loop of split edge, we need first cache the current edge and next edge,
+so that even though split_edge creates new edge and change the order of edges, we can still find the original next edge to iterate, otherwise
+the program will stuck to somewhere it can't finish the loop.
+
