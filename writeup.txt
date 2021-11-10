@@ -38,3 +38,7 @@ can break the rest of loop_subdivision code. The main part is in the loop of spl
 so that even though split_edge creates new edge and change the order of edges, we can still find the original next edge to iterate, otherwise
 the program will stuck to somewhere it can't finish the loop.
 
+
+CMU CG 15662 Assignment 3.0
+
+Checking point:

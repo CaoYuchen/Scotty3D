@@ -13,6 +13,12 @@ BBox Triangle::bbox() const {
     // account for that here, or later on in BBox::intersect.
 
     BBox box;
+    Tri_Mesh_Vert v_0 = vertex_list[v0];
+    Tri_Mesh_Vert v_1 = vertex_list[v1];
+    Tri_Mesh_Vert v_2 = vertex_list[v2];
+    box.enclose(v_0.position);
+    box.enclose(v_1.position);
+    box.enclose(v_2.position);
     return box;
 }
 
@@ -28,14 +34,34 @@ Trace Triangle::hit(const Ray& ray) const {
 
     // TODO (PathTracer): Task 2
     // Intersect the ray with the triangle defined by the three vertices.
+    Vec3 e1 = v_1.position - v_0.position;
+    Vec3 e2 = v_2.position - v_0.position;
+    Vec3 s = ray.point - v_0.position;
 
     Trace ret;
-    ret.origin = ray.point;
-    ret.hit = false;       // was there an intersection?
-    ret.distance = 0.0f;   // at what distance did the intersection occur?
-    ret.position = Vec3{}; // where was the intersection?
-    ret.normal = Vec3{};   // what was the surface normal at the intersection?
-                           // (this should be interpolated between the three vertex normals)
+    float denominator = dot(cross(e1, ray.dir), e2);
+    if(denominator == 0) {
+        return ret;
+    }
+
+    float u = -1 * dot(cross(s, e2), ray.dir) / denominator;
+    float v = dot(cross(e1, ray.dir), s) / denominator;
+    float t = -1 * dot(cross(s, e2), e1) / denominator;
+
+    if(u >= 0 && u <= 1 && v >= 0 && v <= 1 & u + v <= 1) {
+        if(t >= ray.dist_bounds.x && t <= ray.dist_bounds.y) {
+
+            ret.origin = ray.point;
+            ret.hit = true;           // was there an intersection?
+            ret.distance = t;         // at what distance did the intersection occur?
+            ret.position = ray.at(t); // where was the intersection?
+            ret.normal =
+                v_0.normal * (1 - u - t) + v_1.normal * u +
+                v_2.normal * v; // what was the surface normal at the intersection?
+                                // (this should be interpolated between the three vertex normals)
+            return ret;
+        }
+    }
     return ret;
 }
 

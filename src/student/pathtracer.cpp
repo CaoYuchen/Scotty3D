@@ -15,16 +15,41 @@ Spectrum Pathtracer::trace_pixel(size_t x, size_t y) {
 
     // Tip: Samplers::Rect::Uniform
     // Tip: log_ray is useful for debugging
+    Samplers::Rect rand;
+    Ray ray_sample;
+    Spectrum emi_sample, ref_sample;
+    if(n_samples > 1) {
+        for(size_t i = 0; i < n_samples; i++) {
+            Vec2 rand_point = rand.sample();
+            Vec2 xy((float)x + rand_point.x, (float)y + rand_point.y);
+            Vec2 wh((float)out_w, (float)out_h);
 
-    Vec2 xy((float)x, (float)y);
+            Ray ray = camera.generate_ray(xy / wh);
+            ray.depth = max_depth;
+            auto [emissive, reflected] = trace(ray);
+            emi_sample += emissive;
+            ref_sample += reflected;
+
+            // debug
+            if(RNG::coin_flip(0.0005f)) log_ray(ray, 10.0f);
+        }
+        emi_sample = emi_sample / (float)n_samples;
+        ref_sample = ref_sample / (float)n_samples;
+        return emi_sample + ref_sample;
+    }
+    // if(n_samples == 1) {
+    Vec2 xy((float)x + 0.5f, (float)y + 0.5f);
     Vec2 wh((float)out_w, (float)out_h);
 
     Ray ray = camera.generate_ray(xy / wh);
     ray.depth = max_depth;
-
-    // Pathtracer::trace() returns the incoming light split into emissive and reflected components.
+    // debug
+    if(RNG::coin_flip(0.0005f)) log_ray(ray, 10.0f);
+    // Pathtracer::trace() returns the incoming light split into emissive and reflected
+    // components.
     auto [emissive, reflected] = trace(ray);
     return emissive + reflected;
+    // }
 }
 
 Spectrum Pathtracer::sample_indirect_lighting(const Shading_Info& hit) {
@@ -78,7 +103,7 @@ Spectrum Pathtracer::sample_direct_lighting(const Shading_Info& hit) {
 
     // (2) Otherwise, we should randomly choose whether we get our sample from `BSDF::scatter`
     // or `Pathtracer::sample_area_lights`. Note that `Pathtracer::sample_area_lights` returns
-    // a world-space direction pointing toward an area light. Choose between the strategies 
+    // a world-space direction pointing toward an area light. Choose between the strategies
     // with equal probability.
 
     // (3) Create a new world-space ray and call Pathtracer::trace() to get incoming light. You
