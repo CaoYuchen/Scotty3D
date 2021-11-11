@@ -42,3 +42,10 @@ the program will stuck to somewhere it can't finish the loop.
 CMU CG 15662 Assignment 3.0
 
 Checking point:
+1. Camera Rays completed, step1-3 finished, one important note is that matrix multiple vector doesn't result the correct vector transformation,
+instead we should calculate the vertex of the vector separately and then recalculate the vector in new world-frame.
+
+2. Intersection completed, both triangle and sphere function are finished, note that for sphere part, inside the sphere function, the frame is sphere 
+itself, i.e. the center of the sphere is (0,0,0), and the function is x^2+y^2+z^2=R^2, don't forget R is squared.
+
+3. implemented bbox() and hit() function, hasn't finished the build and hit in bvh.inl yet.
