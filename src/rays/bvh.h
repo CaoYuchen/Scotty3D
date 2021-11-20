@@ -29,6 +29,18 @@ public:
     std::vector<Primitive> destructure();
     void clear();
 
+    void construct(size_t root_idx, size_t max_leaf_size);
+    std::pair<float, size_t> eval_cost(size_t root_idx, size_t xyz);
+    // bool sort_x(Primitive a, Primitive b) {
+    //     return (a.bbox().center().x < b.bbox().center().x);
+    // }
+    // bool sort_y(Primitive a, Primitive b) {
+    //     return (a.bbox().center().y < b.bbox().center().y);
+    // }
+    // bool sort_z(Primitive a, Primitive b) {
+    //     return (a.bbox().center().z < b.bbox().center().z);
+    // }
+
 private:
     class Node {
 

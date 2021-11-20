@@ -43,14 +43,139 @@ void BVH<Primitive>::build(std::vector<Primitive>&& prims, size_t max_leaf_size)
 
     new_node(box, 0, primitives.size(), 0, 0);
     root_idx = 0;
+
+    construct(root_idx, max_leaf_size);
+}
+
+template<typename Primitive> void BVH<Primitive>::construct(size_t root_idx, size_t max_leaf_size) {
+    float cost_x, cost_y, cost_z, cost_min;
+    std::vector<Primitive> left_prims, right_prims;
+    BBox left_box, right_box;
+    size_t i_min, i_x, i_y, i_z;
+    size_t xyz;
+
+    if(nodes[root_idx].size <= max_leaf_size) {
+        return;
+    }
+    // cost along x axis
+    std::sort(primitives.begin() + nodes[root_idx].start,
+              primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+              [](const Primitive& a, const Primitive& b) {
+                  return (a.bbox().center().x < b.bbox().center().x);
+              });
+    std::tie(cost_x, i_x) = eval_cost(root_idx, xyz = 0);
+    // cost along y axis
+    std::sort(primitives.begin() + nodes[root_idx].start,
+              primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+              [](const Primitive& a, const Primitive& b) {
+                  return (a.bbox().center().y < b.bbox().center().y);
+              });
+    std::tie(cost_y, i_y) = eval_cost(root_idx, xyz = 1);
+    // cost along z axis
+    std::sort(primitives.begin() + nodes[root_idx].start,
+              primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+              [](const Primitive& a, const Primitive& b) {
+                  return (a.bbox().center().z < b.bbox().center().z);
+              });
+    std::tie(cost_z, i_z) = eval_cost(root_idx, xyz = 2);
+
+    // find the minimum of x,y,z
+    cost_min = std::min(cost_x, std::min(cost_y, cost_z));
+    if(cost_min == cost_x) {
+        i_min = i_x;
+        std::sort(primitives.begin() + nodes[root_idx].start,
+                  primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                  [](const Primitive& a, const Primitive& b) {
+                      return (a.bbox().center().x < b.bbox().center().x);
+                  });
+
+    } else if(cost_min == cost_y) {
+        i_min = i_y;
+        std::sort(primitives.begin() + nodes[root_idx].start,
+                  primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                  [](const Primitive& a, const Primitive& b) {
+                      return (a.bbox().center().y < b.bbox().center().y);
+                  });
+    } else {
+        i_min = i_z;
+        std::sort(primitives.begin() + nodes[root_idx].start,
+                  primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                  [](const Primitive& a, const Primitive& b) {
+                      return (a.bbox().center().z < b.bbox().center().z);
+                  });
+    }
+
+    for(size_t l = nodes[root_idx].start; l < i_min; l++) {
+        left_box.enclose(primitives[l].bbox());
+    }
+    for(size_t r = i_min + 1; r < nodes[root_idx].start + nodes[root_idx].size; r++) {
+        right_box.enclose(primitives[r].bbox());
+    }
+
+    // nodes.at(index).l = new_node(left_box, nodes[root_idx].start,i_min+1,);
+    // nodes.at(index).r = new_node(right_box, nodes[root_idx].start + nodes[root_idx].size + 1, );
+
+    construct(root_idx, max_leaf_size);
+    construct(i_min + 1, max_leaf_size);
+}
+
+template<typename Primitive>
+std::pair<float, size_t> BVH<Primitive>::eval_cost(size_t root_idx, size_t xyz) {
+    float cost, cost_min = FLT_MAX;
+    size_t i_min;
+    BBox box, left_box, right_box;
+    std::vector<Primitive> left_prims, right_prims;
+
+    // overall box
+    for(size_t i = nodes[root_idx].start; i < nodes[root_idx].start + nodes[root_idx].size; i++) {
+        box.enclose(primitives[i].bbox());
+    }
+    for(size_t i = nodes[root_idx].start; i < nodes[root_idx].start + nodes[root_idx].size; i++) {
+        // along x axis
+        if(xyz == 0) {
+            std::partition_copy(primitives.begin() + nodes[root_idx].start,
+                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                                left_prims.begin(), right_prims.begin(),
+                                [](const Primitive& a, const Primitive& b) {
+                                    return (a.bbox().center().x < b.bbox().center().x);
+                                });
+        }
+        // along y axis
+        else if(xyz == 1) {
+            std::partition_copy(primitives.begin() + nodes[root_idx].start,
+                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                                left_prims.begin(), right_prims.begin(),
+                                [](const Primitive& a, const Primitive& b) {
+                                    return (a.bbox().center().y < b.bbox().center().y);
+                                });
+        }
+        // along z axis
+        else if(xyz == 2) {
+            std::partition_copy(primitives.begin() + nodes[root_idx].start,
+                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
+                                left_prims.begin(), right_prims.begin(),
+                                [](const Primitive& a, const Primitive& b) {
+                                    return (a.bbox().center().z < b.bbox().center().z);
+                                });
+        }
+
+        for(const Primitive& prim : left_prims) left_box.enclose(prim.bbox());
+        for(const Primitive& prim : right_prims) right_box.enclose(prim.bbox());
+        cost = 1.0f + left_box.surface_area() / box.surface_area() * left_prims.size() +
+               right_box.surface_area() / box.surface_area() * right_prims.size();
+        if(cost < cost_min) {
+            cost_min = cost;
+            i_min = i;
+        }
+    }
+    return std::make_pair(cost_min, i_min);
 }
 
 template<typename Primitive> Trace BVH<Primitive>::hit(const Ray& ray) const {
-
     // TODO (PathTracer): Task 3
     // Implement ray - BVH intersection test. A ray intersects
-    // with a BVH aggregate if and only if it intersects a primitive in
-    // the BVH that is not an aggregate.
+    // with a BVH aggregate if and only if it intersects a primitive
+    // in the BVH that is not an aggregate.
 
     // The starter code simply iterates through all the primitives.
     // Again, remember you can use hit() on any Primitive value.
@@ -77,8 +202,8 @@ template<typename Primitive> BVH<Primitive> BVH<Primitive>::copy() const {
 }
 
 template<typename Primitive> bool BVH<Primitive>::Node::is_leaf() const {
-
-    // A node is a leaf if l == r, since all interior nodes must have distinct children
+    // A node is a leaf if l == r, since all interior nodes must
+    // have distinct children
     return l == r;
 }
 
@@ -111,7 +236,6 @@ template<typename Primitive> void BVH<Primitive>::clear() {
 template<typename Primitive>
 size_t BVH<Primitive>::visualize(GL::Lines& lines, GL::Lines& active, size_t level,
                                  const Mat4& trans) const {
-
     std::stack<std::pair<size_t, size_t>> tstack;
     tstack.push({root_idx, 0});
     size_t max_level = 0;

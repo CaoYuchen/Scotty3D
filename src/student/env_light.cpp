@@ -32,7 +32,7 @@ Spectrum Env_Map::evaluate(Vec3 dir) const {
     // Compute emitted radiance along a given direction by finding the corresponding
     // pixels in the enviornment image. You should bi-linearly interpolate the value
     // between the 4 nearest pixels.
-
+    
     return Spectrum{};
 }
 

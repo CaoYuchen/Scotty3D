@@ -72,8 +72,14 @@ Spectrum Pathtracer::sample_indirect_lighting(const Shading_Info& hit) {
     // You should only use the indirect component of incoming light (the second value returned
     // by Pathtracer::trace()), as the direct component will be computed in
     // Pathtracer::sample_direct_lighting().
+    Scatter in_dir = hit.bsdf.scatter(hit.out_dir);
+    Ray ray(hit.pos, in_dir.direction, Vec2{EPS_F, std::numeric_limits<float>::infinity()},
+            hit.depth - 1);
 
-    Spectrum radiance;
+    Spectrum radiance = trace(ray).second;
+    if(!hit.bsdf.is_discrete()) {
+        radiance = radiance / hit.bsdf.pdf(hit.out_dir, in_dir.direction) / in_dir.direction.y;
+    }
     return radiance;
 }
 
@@ -93,6 +99,7 @@ Spectrum Pathtracer::sample_direct_lighting(const Shading_Info& hit) {
     // incoming light (the first value returned by Pathtracer::trace()). Note that since we only
     // want emissive, we can trace a ray with depth = 0.
 
+    // radiance = trace(ray).first;
     // TODO (PathTrace): Task 6
 
     // For task 6, we want to upgrade our direct light sampling procedure to also
