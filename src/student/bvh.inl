@@ -44,15 +44,17 @@ void BVH<Primitive>::build(std::vector<Primitive>&& prims, size_t max_leaf_size)
     new_node(box, 0, primitives.size(), 0, 0);
     root_idx = 0;
 
-    construct(root_idx, max_leaf_size);
+    construct(max_leaf_size);
+    return;
 }
 
-template<typename Primitive> void BVH<Primitive>::construct(size_t root_idx, size_t max_leaf_size) {
+template<typename Primitive> void BVH<Primitive>::construct(size_t max_leaf_size) {
     float cost_x, cost_y, cost_z, cost_min;
     std::vector<Primitive> left_prims, right_prims;
     BBox left_box, right_box;
+    // size_t root_left, root_right;
     size_t i_min, i_x, i_y, i_z;
-    size_t xyz;
+    size_t root_temp = root_idx;
 
     if(nodes[root_idx].size <= max_leaf_size) {
         return;
@@ -63,21 +65,21 @@ template<typename Primitive> void BVH<Primitive>::construct(size_t root_idx, siz
               [](const Primitive& a, const Primitive& b) {
                   return (a.bbox().center().x < b.bbox().center().x);
               });
-    std::tie(cost_x, i_x) = eval_cost(root_idx, xyz = 0);
+    std::tie(cost_x, i_x) = eval_cost();
     // cost along y axis
     std::sort(primitives.begin() + nodes[root_idx].start,
               primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
               [](const Primitive& a, const Primitive& b) {
                   return (a.bbox().center().y < b.bbox().center().y);
               });
-    std::tie(cost_y, i_y) = eval_cost(root_idx, xyz = 1);
+    std::tie(cost_y, i_y) = eval_cost();
     // cost along z axis
     std::sort(primitives.begin() + nodes[root_idx].start,
               primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
               [](const Primitive& a, const Primitive& b) {
                   return (a.bbox().center().z < b.bbox().center().z);
               });
-    std::tie(cost_z, i_z) = eval_cost(root_idx, xyz = 2);
+    std::tie(cost_z, i_z) = eval_cost();
 
     // find the minimum of x,y,z
     cost_min = std::min(cost_x, std::min(cost_y, cost_z));
@@ -105,62 +107,42 @@ template<typename Primitive> void BVH<Primitive>::construct(size_t root_idx, siz
                   });
     }
 
-    for(size_t l = nodes[root_idx].start; l < i_min; l++) {
+    for(size_t l = nodes[root_idx].start; l < i_min + 1; l++) {
         left_box.enclose(primitives[l].bbox());
     }
     for(size_t r = i_min + 1; r < nodes[root_idx].start + nodes[root_idx].size; r++) {
         right_box.enclose(primitives[r].bbox());
     }
 
-    // nodes.at(index).l = new_node(left_box, nodes[root_idx].start,i_min+1,);
-    // nodes.at(index).r = new_node(right_box, nodes[root_idx].start + nodes[root_idx].size + 1, );
+    nodes[root_idx].l = nodes[root_idx].start;
+    nodes[root_idx].r = i_min + 1;
 
-    construct(root_idx, max_leaf_size);
-    construct(i_min + 1, max_leaf_size);
+    root_idx = new_node(left_box, nodes[root_temp].start, i_min + 1 - nodes[root_temp].start, 0, 0);
+
+    construct(max_leaf_size);
+    root_idx = new_node(right_box, i_min + 1, nodes[root_temp].size - (i_min + 1), 0, 0);
+    construct(max_leaf_size);
+    return;
 }
 
-template<typename Primitive>
-std::pair<float, size_t> BVH<Primitive>::eval_cost(size_t root_idx, size_t xyz) {
+template<typename Primitive> std::pair<float, size_t> BVH<Primitive>::eval_cost() {
     float cost, cost_min = FLT_MAX;
     size_t i_min;
     BBox box, left_box, right_box;
     std::vector<Primitive> left_prims, right_prims;
 
-    // overall box
     for(size_t i = nodes[root_idx].start; i < nodes[root_idx].start + nodes[root_idx].size; i++) {
-        box.enclose(primitives[i].bbox());
-    }
-    for(size_t i = nodes[root_idx].start; i < nodes[root_idx].start + nodes[root_idx].size; i++) {
-        // along x axis
-        if(xyz == 0) {
-            std::partition_copy(primitives.begin() + nodes[root_idx].start,
-                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
-                                left_prims.begin(), right_prims.begin(),
-                                [](const Primitive& a, const Primitive& b) {
-                                    return (a.bbox().center().x < b.bbox().center().x);
-                                });
+        for(size_t j = nodes[root_idx].start; j < i + 1; j++) {
+            left_box.enclose(primitives[j].bbox());
+            // overall box
+            box.enclose(primitives[j].bbox());
         }
-        // along y axis
-        else if(xyz == 1) {
-            std::partition_copy(primitives.begin() + nodes[root_idx].start,
-                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
-                                left_prims.begin(), right_prims.begin(),
-                                [](const Primitive& a, const Primitive& b) {
-                                    return (a.bbox().center().y < b.bbox().center().y);
-                                });
+        for(size_t k = i + 1; k < nodes[root_idx].start + nodes[root_idx].size; k++) {
+            right_box.enclose(primitives[k].bbox());
+            box.enclose(primitives[k].bbox());
         }
-        // along z axis
-        else if(xyz == 2) {
-            std::partition_copy(primitives.begin() + nodes[root_idx].start,
-                                primitives.begin() + nodes[root_idx].start + nodes[root_idx].size,
-                                left_prims.begin(), right_prims.begin(),
-                                [](const Primitive& a, const Primitive& b) {
-                                    return (a.bbox().center().z < b.bbox().center().z);
-                                });
-        }
-
-        for(const Primitive& prim : left_prims) left_box.enclose(prim.bbox());
-        for(const Primitive& prim : right_prims) right_box.enclose(prim.bbox());
+        // for(const Primitive& prim : left_prims) left_box.enclose(prim.bbox());
+        // for(const Primitive& prim : right_prims) right_box.enclose(prim.bbox());
         cost = 1.0f + left_box.surface_area() / box.surface_area() * left_prims.size() +
                right_box.surface_area() / box.surface_area() * right_prims.size();
         if(cost < cost_min) {
@@ -179,12 +161,45 @@ template<typename Primitive> Trace BVH<Primitive>::hit(const Ray& ray) const {
 
     // The starter code simply iterates through all the primitives.
     // Again, remember you can use hit() on any Primitive value.
+    static size_t root = 0;
+    Trace ret, ret_temp;
 
-    Trace ret;
-    for(const Primitive& prim : primitives) {
-        Trace hit = prim.hit(ray);
-        ret = Trace::min(ret, hit);
+    if(nodes[root].is_leaf()) {
+        size_t start = nodes[root].start;
+        size_t end = nodes[root].start + nodes[root].size;
+        Vec2 t;
+        for(size_t i = start; i < end; i++) {
+            Trace hit = primitives[i].hit(ray);
+            ret = Trace::min(ret, hit);
+        }
+    } else {
+        Vec2 t1, t2, t_second;
+        size_t first, second;
+        size_t left = nodes[root].l;
+        size_t right = nodes[root].r;
+        primitives[left].bbox().hit(ray, t1);
+        primitives[right].bbox().hit(ray, t2);
+
+        if(t1.x >= t2.x) {
+            first = right;
+            second = left;
+            t_second = t1;
+        } else {
+            first = left;
+            second = right;
+            t_second = t2;
+        }
+        root = first;
+        ret = hit(ray);
+        if(t_second.x < ret.distance) {
+            root = second;
+            ret_temp = hit(ray);
+        }
+        if(ret_temp.hit) {
+            ret = ret_temp;
+        }
     }
+
     return ret;
 }
 
