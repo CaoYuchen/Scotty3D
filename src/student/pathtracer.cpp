@@ -72,6 +72,7 @@ Spectrum Pathtracer::sample_indirect_lighting(const Shading_Info& hit) {
     // You should only use the indirect component of incoming light (the second value returned
     // by Pathtracer::trace()), as the direct component will be computed in
     // Pathtracer::sample_direct_lighting().
+
     Scatter in_dir = hit.bsdf.scatter(hit.out_dir);
     Ray ray(hit.pos, in_dir.direction, Vec2{EPS_F, std::numeric_limits<float>::infinity()},
             hit.depth - 1);
@@ -80,6 +81,8 @@ Spectrum Pathtracer::sample_indirect_lighting(const Shading_Info& hit) {
     if(!hit.bsdf.is_discrete()) {
         radiance = radiance / hit.bsdf.pdf(hit.out_dir, in_dir.direction) / in_dir.direction.y;
     }
+
+    // Spectrum radiance;
     return radiance;
 }
 

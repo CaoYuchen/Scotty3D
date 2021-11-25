@@ -44,7 +44,7 @@ void BVH<Primitive>::build(std::vector<Primitive>&& prims, size_t max_leaf_size)
     new_node(box, 0, primitives.size(), 0, 0);
     root_idx = 0;
 
-    construct(max_leaf_size);
+    // construct(max_leaf_size);
     return;
 }
 
